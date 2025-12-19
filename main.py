@@ -1,45 +1,41 @@
 import bcrypt
+import sqlite3
 
-password = 'Magic123'
-
-def hash_password(password):
+def generate_hash(password):
     binary_password = password.encode('utf-8') #b'Magic123'
     salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(binary_password, salt)
-    return hashed.decode('utf-8')
-
-password = 'Magic123'
-hash = hash_password(password)
+    hash = bcrypt.hashpw(binary_password, salt)
+    return hash.decode('utf-8')
 
 def validate_password (password, hash):
-    psw = password.encode('utf-8')
+    binary_password = password.encode('utf-8')
     hash_ = hash.encode('utf-8')
-    return bcrypt.checkpw(psw, hash_)
+    is_valid = bcrypt.checkpw(binary_password, hash_)
+    return is_valid
 
 password = 'Magic123'
-hash = hash_password(password)
-print(hash)
-print(validate_password(password,hash))
 
+# registering a user #3
 def register_user():
     user_name = input('Enter name: ')
     user_password = input('Enter password: ')
-    hash = hash_password(user_password)
-    with open('users.txt', 'a') as f:
-        f.write(f'{user_name},{hash}\n')
+    hash_password = generate_hash(password)
+    with open('DATA/users.txt', 'a') as f:
+        f.write(f'{user_name},{hash_password}\n')
     print ('User Registered!!')
 
+# log in user #
 def log_in():
     user_name = input('Enter name: ')
     user_password = input('Enter password: ')
-    with open('users.txt', 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            name,hash = line.strip().split(',')
-            if name == user_name:
-                return validate_password(user_password, hash)
-            return False
-        
+    with open('DATA/users.txt', 'r') as f:
+        users = f.readlines()
+    for user in users:
+        user_name,user_password = user.strip().split(',')
+        if user_name == user_name and validate_password(user_password, hash):
+             return True
+    return False
+
 def menu():
     print('Welcome!!')
     print('Choose from the following options:')
@@ -48,13 +44,42 @@ def menu():
     print('3. Exit')
 
 def main():
-    while True:
+    flag = True
+    while flag:
         menu()
         choice = input (' > ')
-        if choice == '1':
-            register_user()
-        elif choice == '2':
-            log_in()
-        elif choice == '3':
-            print ('Goodbye!!')
-            break
+
+        match choice:
+            case "1":
+                register_user()
+            case "2":
+                if log_in():
+                    print('Logged in successfully!')
+                else:
+                    print('Incorrect. Try again.')
+            case '3':
+                print ('Goodbye!!')
+                flag = False
+            case _:
+                print("Incorrect input!")
+main()
+
+conn = sqlite3.connect('DATA/intelligence_platform.db')
+curr = conn.cursor
+sql = '''CREATE TABLE users ( 
+id INTEGER PRIMARY KEY AUTOINCREMENT, 
+username TEXT NOT NULL UNIQUE, 
+password_hash TEXT NOT NULL); 
+'''
+curr.execute(sql)
+conn.commit()
+conn.close()
+
+def add_user(conn, name, hash):
+    conn = sqlite3.connect('DATA/intelligence_platform.db')
+    curr = conn.cursor
+    sql = '''INSERT INTO users (username, password_hash) VALUES (?, ?) '''
+    param = (name, hash)
+    curr.execute(sql, param)
+    conn.commit()
+conn.close()
